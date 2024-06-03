@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 
-const socket = io('http://127.0.0.1:5000');
+const socket = io('http://localhost:5003', {
+  reconnectionAttempts: 5,  // Number of reconnection attempts before giving up
+  reconnectionDelay: 1000,  // Time delay between reconnection attempts
+  transports: ['websocket'],
+});
 
 function App() {
   const [inputText, setInputText] = useState('');
@@ -9,25 +13,32 @@ function App() {
   const [topK, setTopK] = useState(5);
   const [doSample, setDoSample] = useState(true);
   const [tokenSelection, setTokenSelection] = useState(200);
+  const [connectionStatus, setConnectionStatus] = useState('Disconnected');
 
   useEffect(() => {
-    if (!socket.connected) {
-      socket.connect();
-    }
-
     socket.on('connect', () => {
+      setConnectionStatus('Connected');
       console.log('Sunucuya bağlanıldı');
     });
 
-    const handleNewWord = (data) => {
-      setInputText(prevText => prevText + data.word + ' ');
-    };
+    socket.on('disconnect', () => {
+      setConnectionStatus('Disconnected');
+      console.log('Sunucudan bağlantı kesildi');
+    });
 
-    socket.on('new_word', handleNewWord);
+    socket.on('new_word', (data) => {
+      setInputText((prevText) => prevText + data.word + ' ');
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error('Bağlantı hatası:', err);
+    });
 
     return () => {
-      socket.off('new_word', handleNewWord);
-      socket.disconnect();
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('new_word');
+      socket.off('connect_error');
     };
   }, []);
 
@@ -37,20 +48,8 @@ function App() {
       temperature: temperature,
       top_k: topK,
       do_sample: doSample,
-      token_selection: tokenSelection
+      token_selection: tokenSelection,
     });
-  };
-
-  const handleTemperatureChange = (e) => {
-    setTemperature(parseFloat(e.target.value));
-  };
-
-  const handleTopKChange = (e) => {
-    setTopK(parseInt(e.target.value));
-  };
-
-  const handleTokenSelectionChange = (e) => {
-    setTokenSelection(parseInt(e.target.value));
   };
 
   return (
@@ -74,7 +73,7 @@ function App() {
                 type="range"
                 className="mt-2"
                 value={temperature}
-                onChange={handleTemperatureChange}
+                onChange={(e) => setTemperature(parseFloat(e.target.value))}
                 step="0.1"
                 min="0"
                 max="2"
@@ -89,7 +88,7 @@ function App() {
                 type="range"
                 className="mt-2"
                 value={topK}
-                onChange={handleTopKChange}
+                onChange={(e) => setTopK(parseInt(e.target.value))}
                 min="0"
                 max="100"
               />
@@ -114,7 +113,7 @@ function App() {
                 type="range"
                 className="mt-2"
                 value={tokenSelection}
-                onChange={handleTokenSelectionChange}
+                onChange={(e) => setTokenSelection(parseInt(e.target.value))}
                 min="0"
                 max="1024"
               />
