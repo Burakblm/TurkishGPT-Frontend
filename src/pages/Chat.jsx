@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 
-const socket = io('http://localhost:5003', {
-  reconnectionAttempts: 5,  // Number of reconnection attempts before giving up
-  reconnectionDelay: 1000,  // Time delay between reconnection attempts
+
+const socket = io("http://127.0.0.1:5003", {
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
   transports: ['websocket'],
 });
 
